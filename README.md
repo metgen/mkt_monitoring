@@ -53,17 +53,17 @@
 - Роутер Mikrotik под управлением RouterOS 7.x.x
 - Ubuntu Server 24.04 (протестировано мной)
 ## Демо изображения
-![mkt_network_2](./doc/mkt_system.png)
+![mkt_network_2](./img/mkt_system.png)
 
-<details><summary>Show more images</summary>
+<details><summary>Показать больше изображений</summary>
 
-![Network](./doc/mkt_network.png)
-![Network2](./doc/mkt_network_2.png)
-![Latency](./doc/mkt_latency.png)
-![DHCP](./doc/mkt_dhcp.png)
-![Firewall](./doc/mkt_firewall.png)
-![WiFi](./doc/mkt_wireless.png)
-![BGP](./doc/mkt_bgp.png)
+![Network](./img/mkt_network.png)
+![Network2](./img/mkt_network_2.png)
+![Latency](./img/mkt_latency.png)
+![DHCP](./img/mkt_dhcp.png)
+![Firewall](./img/mkt_firewall.png)
+![WiFi](./img/mkt_wireless.png)
+![BGP & Netwatch](./img/mkt_bgp_netwatch.png)
 
 
 </details>
