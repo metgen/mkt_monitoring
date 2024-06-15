@@ -1,0 +1,60 @@
+## Copyright (c) 2020 Arseniy Kuznetsov
+##
+## This program is free software; you can redistribute it and/or
+## modify it under the terms of the GNU General Public License
+## as published by the Free Software Foundation; either version 2
+## of the License, or (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+
+[Sample-Router]
+    enabled = True                  # turns metrics collection for this RouterOS device on / off
+
+    hostname = 192.168.0.1          # RouterOS IP address
+    port = 8728                     # RouterOS IP Port
+
+    username = prometheus           # RouterOS user, needs to have 'read' and 'api' permissions
+    password = secret_pa$$word
+
+    use_ssl = False                 # enables connection via API-SSL servis
+    no_ssl_certificate = False      # enables API_SSL connect without router SSL certificate
+    ssl_certificate_verify = False  # turns SSL certificate verification on / off
+
+    installed_packages = True       # Installed packages
+    dhcp = True                     # DHCP general metrics
+    dhcp_lease = True               # DHCP lease metrics
+
+    connections = True              # IP connections metrics
+    connection_stats = True         # Open IP connections metrics
+
+    pool = True                     # Pool metrics
+    interface = True                # Interfaces traffic metrics
+
+    firewall = True                 # IPv4 Firewall rules traffic metrics
+    ipv6_firewall = False           # IPv6 Firewall rules traffic metrics
+    ipv6_neighbor = False           # Reachable IPv6 Neighbors
+
+    poe = True                      # POE metrics
+    monitor = True                  # Interface monitor metrics
+    netwatch = True                 # Netwatch metrics
+    public_ip = True                # Public IP metrics
+    route = True                    # Routes metrics
+    wireless = True                 # WLAN general metrics
+    wireless_clients = True         # WLAN clients metrics
+    capsman = True                  # CAPsMAN general metrics
+    capsman_clients = True          # CAPsMAN clients metrics
+    bgp = True                      # BGP monitoring
+
+    kid_control_devices = False     # Kid Control metrics
+
+    user = True                     # Active Users metrics
+    queue = True                    # Queues metrics
+
+    remote_dhcp_entry = None        # An MKTXP entry for remote DHCP info resolution (capsman/wireless)
+
+    use_comments_over_names = True  # when available, forces using comments over the interfaces names
+
+    check_for_updates = True        # check for available ROS updates
