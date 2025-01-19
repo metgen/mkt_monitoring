@@ -56,11 +56,11 @@
 
 **Mikrotik MKTXP Monitoring**
 
-<img width="49%" alt="mktxp_1" src="./assets/mktxp_1.png">
-<img width="49%" alt="mktxp_1" src="./assets/mktxp_2.png">
+![mktxp_1](./assets/mktxp_1.png)
 
 <details><summary>Показать больше изображений</summary>
-
+ 
+![mktxp_2](./assets/mktxp_2.png)
 ![mktxp_3](./assets/mktxp_3.png)
 **Mikrotik Loki Logs**
 ![mkt_loki_logs](./assets/mkt_loki_logs.png)
