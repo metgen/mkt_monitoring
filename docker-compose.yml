@@ -1,83 +1,121 @@
-version: "3.9"
+networks:
+  monitoring: {}
 
 volumes:
-  prometheus_data: {}
-  grafana_data: {}
+  prometheus_storage: {}
+  grafana_storage: {}
 
 services:
-  # Prometheus
-  # https://github.com/stefanprodan/dockprom
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: mikrotik-prometheus
-    volumes:
-      - ./prometheus:/etc/prometheus
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=1y' # <= adjust the storage retention period of Prometheus
-    restart: unless-stopped
-    networks:
-      - default
-    labels:
-      org.label-schema.group: "monitoring"
-
-  # Grafana
-  # https://github.com/stefanprodan/dockprom
-  grafana:
-    image: grafana/grafana:10.4.2
-    container_name: mikrotik-grafana
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
-    environment:
-      - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_INSTALL_PLUGINS=flant-statusmap-panel
-      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/mikrotik/monitor.json
-    restart: unless-stopped
-    networks:
-      - default
-    labels:
-      org.label-schema.group: "monitoring"
-
-  # MKTXP
-  # https://github.com/akpw/mktxp
   mktxp:
+    container_name: mktxp
     image: ghcr.io/akpw/mktxp:latest
-    container_name: mikrotik-mktxp
+    user: root
     volumes:
-      # Since Version v0.37 mktxp runs as single user
-      # Prior it was root
-      - './mktxp/:/home/mktxp/mktxp/'
+      - './mktxp/:/root/mktxp/'
     networks:
-      - default
-    restart: unless-stopped
+      monitoring: null
+    restart: unless-stopped  
 
-  nginx:
-    image: nginx:latest
-    container_name: mikrotik-nginx
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
-      - ./nginx/nginx-selfsigned.key:/etc/nginx/ssl/nginx-selfsigned.key
-      - ./nginx/nginx-selfsigned.crt:/etc/nginx/ssl/nginx-selfsigned.crt
-      - ./nginx/self-signed.conf:/etc/nginx/ssl/self-signed.conf
+  grafana:
+    container_name: grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_DEFAULT_THEME: "dark"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/mikrotik/mikrotik_mktxp_exporter.json
+    image: grafana/grafana:latest
+    networks:
+      monitoring: null
     ports:
-      - 3003:3003 # You may adjust to some unprivileged ports
-    networks:
-      - default
+    - protocol: tcp
+      published: 3003
+      target: 3000
     restart: unless-stopped
+    volumes:
+    -  grafana_storage:/var/lib/grafana
+    - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+    - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
 
-  # https://github.com/prometheus/blackbox_exporter/blob/master/example.yml
+  loki:
+    command: -config.file=/etc/loki/loki-config.yml
+    container_name: loki
+    image: grafana/loki:latest
+    networks:
+      monitoring: null
+    ports:
+    - protocol: tcp
+      published: 3100
+      target: 3100
+    restart: unless-stopped
+    volumes:
+    - ./loki/loki-config.yml:/etc/loki/loki-config.yml
+
+  prometheus:
+    command:
+    - --config.file=/etc/prometheus/prometheus.yml
+    - --storage.tsdb.path=/prometheus
+    - --storage.tsdb.retention.time=1y
+    - --web.enable-admin-api
+    - --web.enable-lifecycle
+    container_name: prometheus
+    image: prom/prometheus:latest
+    networks:
+      monitoring: null
+    ports:
+    - published: 9090
+      target: 9090
+    restart: unless-stopped
+    volumes:
+    - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    - prometheus_storage:/prometheus
+
+  promtail:
+    command: -config.file=/etc/promtail/promtail-config.yml
+    container_name: promtail
+    image: grafana/promtail:latest
+    networks:
+      monitoring: null
+    ports:
+    - protocol: tcp
+      published: 1514
+      target: 1514
+    - protocol: tcp
+      published: 9080
+      target: 9080
+    restart: unless-stopped
+    volumes:
+    - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+
+  syslog-ng:
+    command: -edv
+    container_name: syslog-ng
+    depends_on:
+    - promtail
+    image: balabit/syslog-ng:latest
+    networks:
+      monitoring: null
+    ports:
+    - protocol: udp
+      published: 514
+      target: 514
+    - protocol: tcp
+      published: 601
+      target: 601
+    restart: unless-stopped
+    volumes:
+    - ./syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf:ro
+  
   blackbox:
     image: quay.io/prometheus/blackbox-exporter:latest
-    container_name: mikrotik-blackbox-exporter
+    container_name: blackbox-exporter
     command: --config.file=/config/blackbox.yml
     volumes:
       - ./blackbox/blackbox.yml:/config/blackbox.yml
     networks:
-      - default
+      monitoring: null
+    ports:
+      - protocol: tcp
+        published: 9115
+        target: 9115
     restart: unless-stopped

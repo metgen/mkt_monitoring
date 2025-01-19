@@ -1,46 +1,53 @@
-# my global config
+# global config
 global:
-  scrape_interval:     120s # By default, scrape targets every 15 seconds.
-  evaluation_interval: 120s # By default, scrape targets every 15 seconds.
-  # scrape_timeout is set to the global default (10s).
-
-  # Attach these labels to any time series or alerts when communicating with
-  # external systems (federation, remote storage, Alertmanager).
+  scrape_interval: 45s # Set the scrape interval to every 45 seconds. Default is every 1 minute.
+  scrape_timeout: 30s
+  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
   external_labels:
-      monitor: 'mikrotik-monitoring'
+    origin_prometheus: mktxp
 
-# Load and evaluate rules in this file every 'evaluation_interval' seconds.
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      # - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
 rule_files:
-  # - "alert.rules"
-  # - "first.rules"
-  # - "second.rules"
 
-# A scrape configuration containing exactly one endpoint to scrape:
-# Here it's Prometheus itself.
 scrape_configs:
-  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
-  - job_name: 'mikrotik'
 
-    # Override the global default and scrape targets from this job every 5 seconds.
-    scrape_interval: 15s
-
-    # metrics_path defaults to '/metrics'
-    # scheme defaults to 'http'.
-
+  - job_name: 'prometheus'
     static_configs:
-         - targets:
-            - 'mktxp:49090'
+    - targets: ['prometheus:9090']
 
+  - job_name: 'grafana'
+    static_configs:
+    - targets: ['grafana:3000']
+
+  - job_name: 'loki'
+    static_configs:
+    - targets: ['loki:3100']
+
+  - job_name: 'promtail'
+    static_configs:
+    - targets: ['promtail:9080']
+
+  - job_name: 'mktxp'
+    static_configs:
+      - targets: ['mktxp:49090']
+  
   - job_name: 'blackbox'
     scrape_interval: 1s
     metrics_path: /probe
     params:
-      module: [icmp_ttl5]  # use ICMP as the ping protocol
+      module: [icmp_ttl5]   # use ICMP as the ping protocol
     static_configs:
       - targets:
-        - 1.1.1.1
-        - 8.8.8.8
-        - 77.88.8.8
+        - 1.1.1.1     # Cloudflare DNS
+        - 8.8.8.8     # Google DNS
+        - 77.88.8.8   # Yandex DNS
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

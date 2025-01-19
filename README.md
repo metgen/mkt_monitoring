@@ -1,6 +1,6 @@
-# Мониторинг роутера Mikrotik при помощи Prometheus и Grafana в docker контейнере
+## Описание
 
-Используем Grafana и Prometheus для мониторинга устройств Mikrotik через API. Этот проект представляет собой готовый стек для мониторинга на основе Docker.
+ Этот проект представляет собой готовый стек для мониторинга устройств Mikrotik через API на основе Docker, который использует Grafana, Prometheus, [Blackbox Exporter](https://github.com/prometheus/blackbox_exporter) и [MKTXP Exporter](https://github.com/akpw/mktxp). Так же он включает в себя централизованную обработку журналов Mikrotik на основе предварительно настроенного стека [syslog-ng](https://www.syslog-ng.com/) / [promtail](https://grafana.com/docs/loki/latest/clients/promtail/) / [Loki](https://grafana.com/docs/loki/latest).
 
 ## Функции
 - Мониторинг работы системы
@@ -52,45 +52,69 @@
 ## Требования
 - Роутер Mikrotik под управлением RouterOS 7.x.x
 - Ubuntu Server 24.04 (протестировано мной)
-## Демо изображения
-![mkt_network_2](./img/mkt_system.png)
+## Демо изображения дашбордов
+
+**Mikrotik MKTXP Monitoring**
+
+<img width="49%" alt="mktxp_1" src="./assets/mktxp_1.png">
+<img width="49%" alt="mktxp_1" src="./assets/mktxp_2.png">
 
 <details><summary>Показать больше изображений</summary>
 
-![Network](./img/mkt_network.png)
-![Network2](./img/mkt_network_2.png)
-![Latency](./img/mkt_latency.png)
-![DHCP](./img/mkt_dhcp.png)
-![Firewall](./img/mkt_firewall.png)
-![WiFi](./img/mkt_wireless.png)
-![BGP & Netwatch](./img/mkt_bgp_netwatch.png)
-
+![mktxp_3](./assets/mktxp_3.png)
+**Mikrotik Loki Logs**
+![mkt_loki_logs](./assets/mkt_loki_logs.png)
+**Grafana Internals**
+![grafana](./assets/grafana.png)
+**Prometheus 2.0 Stats**
+![prometheus](./assets/prometheus.png)
 
 </details>
 
-## Установка
+## Установка и начало работы
 
-### Mikrotik
+### Подготовка Mikrotik
+
 Первым делом нужно подготовить наш роутер.
+
 Создаем группу которая будет иметь read-only доступ к API
 
 ```bash
-/user group add name=prometheus policy=api,read,winbox,test
+/user group add name=prometheus policy=api,read
 ```
 
 Создаем пользователя в этой группе:
 
 ```bash
-/user add name=prometheus group=prometheus password=$ecret_pa$$word
+/user add name=prometheus group=prometheus password=prometheus_user_password
 ```
 
-### Ubuntu Server
+Для для получения и обработки логов с нескольких устройств Mikrotik RouterOS в централизованном месте, нам нужно настроить наши устройства Mikrotik для отправки своих логов на указанный целевой сервер логов.
 
-Вам нужен Ubuntu Server на платформе x64 или ARM 64bit. В своей домашней лаборатории я использую виртуальную машину Ubuntu Server 24.04 на Hyper-V.
+Настроим `logging action` (замените XX.XX.XX.XX на IP-адрес вашего сервера):
 
-Устанвливаем Python и pip:
+```bash
+/system logging action
+set remote bsd-syslog=yes name=remote remote=XX.XX.XX.XX remote-port=514 src-address=0.0.0.0 syslog-facility=local0 syslog-severity=auto target=remote
+```
+Далее изменяем соответствующие разделы логов для использования `logging action`:
 
-`sudo apt install python3-dev python3 python3-pip -y`
+```bash
+/system logging
+set 0 action=remote prefix=:Info
+set 1 action=remote prefix=:Error
+set 2 action=remote prefix=:Warning
+set 3 action=remote prefix=:Critical
+
+add action=remote disabled=no prefix=:Firewall topics=firewall
+add action=remote disabled=no prefix=:Account topics=account
+add action=remote disabled=no prefix=:Caps topics=caps
+add action=remote disabled=no prefix=:Wireles topics=wireless
+```
+
+При необходимости вы можете расширить приведенный выше список, следуя [документации](https://help.mikrotik.com/docs/display/ROS/Log) RouterOS, предоставленной Mikrotik.
+
+### Подготовка сервера
 
 Устанавливаем Docker + Docker-compose
 
@@ -102,39 +126,47 @@ sudo apt install docker-compose
 sudo systemctl enable docker
 sudo reboot
 ```
-Клонируем репозиторий и устанавливаем все сервисы:
+Клонируем репозиторий и переходим в директорию `mkt_monitoring`:
 
 ```bash
-# Клонируем этот репозиторий
 git clone https://github.com/metgen/mkt_monitoring.git
-
-# Переходим в директорию mkt_monitoring
 cd mkt_monitoring
+```
 
-# Запускаем docker-compose
+### Конфигурация экспортера MKTXP
+
+Отредактируем основной файл конфигурации mktxp, добавив IP-адрес вашего устройства Mikrotik и информацию для аутентификации:
+
+```bash
+nano mktxp/mktxp.conf
+```
+
+>Вы можете добавить в мониторинг несколько устройств Mikrotik. Просто добавьте его в `mktxp/mktxp.conf`как предыдущее.
+
+### Настраиваем мониторинг задержек
+
+В этом проекте используется Blackbox Exporter для измерения задержек сети. По умолчанию имеет три цели:
+
+- 1.1.1.1 (Cloudflare DNS)
+- 8.8.8.8 (Google DNS)
+- 77.88.8.8 (Yandex DNS)
+
+Их можно изменить в файле конфигурации Prometheus:
+
+```bash
+nano prometheus/prometheus.yml
+```
+
+### Запускаем docker-compose
+
+Теперь все должно быть готово и можно переходить к запкуску контейнеров:
+
+```bash
 docker-compose up -d
 ```
-После запуска, Grafana будет доступна по адресу `http://localhost:3003`
+Как только контейнеры будут запущены, откройте в своем веб-браузере Grafana по адресу `http://server_ip:3003`
 
-Вам нужно изменить следующий конфигурационный файл и добавить ранее созданные логин и пароль для вашего роутера.
-
-`mktxp/mktxp.conf`
-
-С более подробной инструкцией по установке и настройки можно ознакомиться на [GitHub](https://github.com/metgen/mkt_monitoring)
-
-### Мониторинг задержек
-
-В этом проекте используется Prometheus Blackbox exporter для измерения задержек сети. По умолчанию имеет три цели:
-
-- 1.1.1.1 (Cloudflare)
-- 8.8.8.8 (Google)
-- 77.88.8.8 (Yandex)
-
-Их можно изменить в `/prometheus/prometheus.yml`
-
-## Мульти ноды
-
-Вы можете добавить в мониторинг несколько устройств Mikrotik. Просто добавьте его в `mktxp/mktxp.conf`как предыдущее.
+Логин и пароль по умолчанию `admin`:`admin`
 
 ## Ресурсы
 
