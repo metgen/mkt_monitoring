@@ -1,2 +1,2 @@
-*.yml linguist-detectable=true
-*.json linguist-detectable=true
+*.yml linguist-language=YAML
+*.json linguist-language=JSON
