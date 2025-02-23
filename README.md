@@ -116,16 +116,24 @@ add action=remote disabled=no prefix=:Wireles topics=wireless
 
 ### Подготовка сервера
 
-Устанавливаем Docker + Docker-compose
+Устанавливаем Docker
 
 ```bash
-curl -sSL https://get.docker.com | sh
-sudo groupadd docker
-sudo usermod -aG docker ${USER}
-sudo apt install docker-compose
-sudo systemctl enable docker
-sudo reboot
+bash <(curl -sSL https://get.docker.com)
 ```
+
+Добавляем текущего пользователя в группу `docker`
+
+```bash
+sudo usermod -aG docker ${USER}
+```
+
+После выполнения команды выйдите из системы и войдите снова, чтобы изменения вступили в силу. Или используйте команду:
+
+```bash
+newgrp docker
+```
+
 Клонируем репозиторий и переходим в директорию `mkt_monitoring`:
 
 ```bash
